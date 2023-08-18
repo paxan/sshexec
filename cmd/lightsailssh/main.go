@@ -27,6 +27,7 @@ func runCommand(ctx context.Context, a sshexec.Authority, instance string, cmd s
 	}
 	defer session.Close()
 
+	session.Stdin = os.Stdin
 	session.Stdout = os.Stdout
 	session.Stderr = os.Stderr
 
