@@ -14,8 +14,8 @@ import (
 	"golang.org/x/term"
 )
 
-func runCommand(ctx context.Context, a sshexec.Authority, instance string, cmd string) error {
-	client, err := sshexec.New(ctx, a, instance)
+func runCommand(d *sshexec.AccessDetails, cmd string) error {
+	client, err := d.NewClient()
 	if err != nil {
 		return err
 	}
@@ -34,8 +34,8 @@ func runCommand(ctx context.Context, a sshexec.Authority, instance string, cmd s
 	return session.Run(cmd)
 }
 
-func runShell(ctx context.Context, a sshexec.Authority, instance string) error {
-	client, err := sshexec.New(ctx, a, instance)
+func runShell(d *sshexec.AccessDetails) error {
+	client, err := d.NewClient()
 	if err != nil {
 		return err
 	}
@@ -122,16 +122,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	la := &lightsail.Authority{Client: lightsailclient.NewFromConfig(cfg)}
+	d, err := lightsail.
+		NewAuthority(lightsailclient.NewFromConfig(cfg)).
+		GetAccessDetails(ctx, p.instance)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if p.command != "" {
-		if err := runCommand(ctx, la, p.instance, p.command); err != nil {
+		if err := runCommand(d, p.command); err != nil {
 			log.Fatal(err)
 		}
 		return
 	}
 
-	if err := runShell(ctx, la, p.instance); err != nil {
+	if err := runShell(d); err != nil {
 		log.Fatal(err)
 	}
 }

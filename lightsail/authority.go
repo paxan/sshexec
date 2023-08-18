@@ -13,14 +13,18 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+type Authority struct {
+	Client InstanceAccessDetailsGetter
+}
+
 type InstanceAccessDetailsGetter interface {
 	GetInstanceAccessDetails(
 		context.Context, *lightsail.GetInstanceAccessDetailsInput, ...func(*lightsail.Options),
 	) (*lightsail.GetInstanceAccessDetailsOutput, error)
 }
 
-type Authority struct {
-	Client InstanceAccessDetailsGetter
+func NewAuthority(client InstanceAccessDetailsGetter) *Authority {
+	return &Authority{Client: client}
 }
 
 func (a *Authority) GetAccessDetails(

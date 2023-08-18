@@ -24,6 +24,14 @@ type AccessDetails struct {
 	Signer        ssh.Signer
 }
 
+func (d *AccessDetails) NewClient(opts ...func(*ssh.ClientConfig)) (*ssh.Client, error) {
+	config, err := d.NewClientConfig(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.Dial("tcp", d.Address, config)
+}
+
 func (d *AccessDetails) NewClientConfig(opts ...func(*ssh.ClientConfig)) (*ssh.ClientConfig, error) {
 	if d.Signer == nil {
 		return nil, errors.New("nil Signer")
@@ -71,33 +79,5 @@ func (d *AccessDetails) HostKeyCallback(_ string, _ net.Addr, hostKey ssh.Public
 		}
 	}
 
-	return fmt.Errorf("%w: %s", ErrUnknownHostKey,
-		bytes.TrimSpace(ssh.MarshalAuthorizedKey(hostKey)))
-}
-
-func New(
-	ctx context.Context, a Authority, target string, opts ...func(*ssh.ClientConfig),
-) (*ssh.Client, error) {
-	ad, err := a.GetAccessDetails(ctx, target)
-	if err != nil {
-		return nil, err
-	}
-
-	config, err := ad.NewClientConfig(opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	d := net.Dialer{Timeout: config.Timeout}
-	conn, err := d.DialContext(ctx, "tcp", ad.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	c, chans, reqs, err := ssh.NewClientConn(conn, ad.Address, config)
-	if err != nil {
-		return nil, errors.Join(err, conn.Close())
-	}
-
-	return ssh.NewClient(c, chans, reqs), nil
+	return fmt.Errorf("%w: %s", ErrUnknownHostKey, bytes.TrimSpace(ssh.MarshalAuthorizedKey(hostKey)))
 }
