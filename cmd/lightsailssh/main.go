@@ -5,6 +5,8 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	lightsailclient "github.com/aws/aws-sdk-go-v2/service/lightsail"
@@ -14,13 +16,27 @@ import (
 	"golang.org/x/term"
 )
 
-func runCommand(d *sshexec.AccessDetails, cmd string) error {
-	client, err := d.NewClient()
-	if err != nil {
-		return err
-	}
-	defer client.Close()
+type stringsFlag []string
 
+func (f stringsFlag) String() string {
+	buf := new(strings.Builder)
+
+	for i, x := range f {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(strconv.Quote(x))
+	}
+
+	return buf.String()
+}
+
+func (f *stringsFlag) Set(s string) error {
+	*f = append(*f, s)
+	return nil
+}
+
+func runCommand(client *ssh.Client, cmd string) error {
 	session, err := client.NewSession()
 	if err != nil {
 		return err
@@ -32,6 +48,27 @@ func runCommand(d *sshexec.AccessDetails, cmd string) error {
 	session.Stderr = os.Stderr
 
 	return session.Run(cmd)
+}
+
+func runCommands(d *sshexec.AccessDetails, cmds []string) error {
+	if len(cmds) == 0 {
+		return nil
+	}
+
+	client, err := d.NewClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	for _, cmd := range cmds {
+		err := runCommand(client, cmd)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func runShell(d *sshexec.AccessDetails) error {
@@ -98,13 +135,13 @@ func main() {
 
 	type params struct {
 		instance string
-		command  string
+		commands stringsFlag
 	}
 
 	p := params{}
 
 	flag.StringVar(&p.instance, "i", "", "the `name` of a Lightsail instance")
-	flag.StringVar(&p.command, "c", "", "`command` to execute")
+	flag.Var(&p.commands, "c", "`command` to execute, can be specified more than once")
 	flag.Parse()
 
 	if p.instance == "" {
@@ -129,8 +166,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if p.command != "" {
-		if err := runCommand(d, p.command); err != nil {
+	if len(p.commands) != 0 {
+		if err := runCommands(d, p.commands); err != nil {
 			log.Fatal(err)
 		}
 		return
