@@ -23,8 +23,8 @@ type InstanceAccessDetailsGetter interface {
 	) (*lightsail.GetInstanceAccessDetailsOutput, error)
 }
 
-func NewAuthority(client InstanceAccessDetailsGetter) *Authority {
-	return &Authority{Client: client}
+func NewAuthority(cfg aws.Config) *Authority {
+	return &Authority{Client: lightsail.NewFromConfig(cfg)}
 }
 
 func (a *Authority) GetAccessDetails(

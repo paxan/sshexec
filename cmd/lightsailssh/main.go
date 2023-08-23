@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	lightsailclient "github.com/aws/aws-sdk-go-v2/service/lightsail"
 	"github.com/paxan/sshexec"
 	"github.com/paxan/sshexec/lightsail"
 	"golang.org/x/crypto/ssh"
@@ -159,9 +158,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	d, err := lightsail.
-		NewAuthority(lightsailclient.NewFromConfig(cfg)).
-		GetAccessDetails(ctx, p.instance)
+	a := lightsail.NewAuthority(cfg)
+
+	d, err := a.GetAccessDetails(ctx, p.instance)
 	if err != nil {
 		log.Fatal(err)
 	}
