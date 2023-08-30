@@ -10,7 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/paxan/sshexec"
-	"github.com/paxan/sshexec/lightsail"
+	"github.com/paxan/sshexec/aws/lightsail"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 )

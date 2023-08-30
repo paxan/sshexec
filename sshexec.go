@@ -48,7 +48,7 @@ func (d *AccessDetails) NewClientConfig(opts ...func(*ssh.ClientConfig)) (*ssh.C
 	}
 
 	config := &ssh.ClientConfig{
-		// The secure default: we'll check against the specified known host
+		// Be secure default: we'll check against the specified known host
 		// keys, if any. If none specified, SSH handshake will fail with
 		// ErrUnknownHostKey. If necessary, the caller may specify their own
 		// ssh.HostKeyCallback.
