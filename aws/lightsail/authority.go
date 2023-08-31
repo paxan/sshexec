@@ -27,9 +27,9 @@ func NewAuthority(cfg aws.Config) *Authority {
 	return &Authority{Client: lightsail.NewFromConfig(cfg)}
 }
 
-func (a *Authority) GetAccessDetails(
+func (a *Authority) IssueCredentials(
 	ctx context.Context, target string,
-) (*sshexec.AccessDetails, error) {
+) (*sshexec.Credentials, error) {
 	iad, err := a.Client.GetInstanceAccessDetails(ctx, &lightsail.GetInstanceAccessDetailsInput{
 		InstanceName: aws.String(target),
 		Protocol:     types.InstanceAccessProtocolSsh,
@@ -53,7 +53,7 @@ func (a *Authority) GetAccessDetails(
 		return nil, err
 	}
 
-	return &sshexec.AccessDetails{
+	return &sshexec.Credentials{
 		User:          aws.ToString(iad.AccessDetails.Username),
 		Address:       net.JoinHostPort(aws.ToString(iad.AccessDetails.IpAddress), "22"),
 		KnownHostKeys: known,

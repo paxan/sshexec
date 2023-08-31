@@ -49,12 +49,12 @@ func runCommand(client *ssh.Client, cmd string) error {
 	return session.Run(cmd)
 }
 
-func runCommands(d *sshexec.AccessDetails, cmds []string) error {
+func runCommands(creds *sshexec.Credentials, cmds []string) error {
 	if len(cmds) == 0 {
 		return nil
 	}
 
-	client, err := d.NewClient()
+	client, err := sshexec.NewClient(creds)
 	if err != nil {
 		return err
 	}
@@ -70,8 +70,8 @@ func runCommands(d *sshexec.AccessDetails, cmds []string) error {
 	return nil
 }
 
-func runShell(d *sshexec.AccessDetails) error {
-	client, err := d.NewClient()
+func runShell(creds *sshexec.Credentials) error {
+	client, err := sshexec.NewClient(creds)
 	if err != nil {
 		return err
 	}
@@ -160,19 +160,19 @@ func main() {
 
 	a := lightsail.NewAuthority(cfg)
 
-	d, err := a.GetAccessDetails(ctx, p.instance)
+	creds, err := a.IssueCredentials(ctx, p.instance)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if len(p.commands) != 0 {
-		if err := runCommands(d, p.commands); err != nil {
+		if err := runCommands(creds, p.commands); err != nil {
 			log.Fatal(err)
 		}
 		return
 	}
 
-	if err := runShell(d); err != nil {
+	if err := runShell(creds); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -2,7 +2,6 @@ package sshexec
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -12,11 +11,7 @@ import (
 
 var ErrUnknownHostKey = errors.New("unknown host key")
 
-type Authority interface {
-	GetAccessDetails(ctx context.Context, target string) (*AccessDetails, error)
-}
-
-type AccessDetails struct {
+type Credentials struct {
 	User          string
 	Address       string
 	KnownHostKeys []ssh.PublicKey
@@ -24,23 +19,23 @@ type AccessDetails struct {
 	Signer        ssh.Signer
 }
 
-func (d *AccessDetails) NewClient(opts ...func(*ssh.ClientConfig)) (*ssh.Client, error) {
-	config, err := d.NewClientConfig(opts...)
+func NewClient(creds *Credentials, opts ...func(*ssh.ClientConfig)) (*ssh.Client, error) {
+	config, err := NewClientConfig(creds, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return ssh.Dial("tcp", d.Address, config)
+	return ssh.Dial("tcp", creds.Address, config)
 }
 
-func (d *AccessDetails) NewClientConfig(opts ...func(*ssh.ClientConfig)) (*ssh.ClientConfig, error) {
-	if d.Signer == nil {
+func NewClientConfig(creds *Credentials, opts ...func(*ssh.ClientConfig)) (*ssh.ClientConfig, error) {
+	if creds.Signer == nil {
 		return nil, errors.New("nil Signer")
 	}
 
-	signer := d.Signer
+	signer := creds.Signer
 
-	if d.Cert != nil {
-		certSigner, err := ssh.NewCertSigner(d.Cert, d.Signer)
+	if creds.Cert != nil {
+		certSigner, err := ssh.NewCertSigner(creds.Cert, creds.Signer)
 		if err != nil {
 			return nil, err
 		}
@@ -52,32 +47,34 @@ func (d *AccessDetails) NewClientConfig(opts ...func(*ssh.ClientConfig)) (*ssh.C
 		// keys, if any. If none specified, SSH handshake will fail with
 		// ErrUnknownHostKey. If necessary, the caller may specify their own
 		// ssh.HostKeyCallback.
-		HostKeyCallback: d.HostKeyCallback,
+		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
+			return validateHostKey(key, creds.KnownHostKeys)
+		},
 	}
 
 	for _, o := range opts {
 		o(config)
 	}
 
-	config.User = d.User
+	config.User = creds.User
 	// This is by design: we only use public key authentication method.
 	config.Auth = []ssh.AuthMethod{ssh.PublicKeys(signer)}
 
 	return config, nil
 }
 
-func (d *AccessDetails) HostKeyCallback(_ string, _ net.Addr, hostKey ssh.PublicKey) error {
-	if hostKey == nil {
+func validateHostKey(key ssh.PublicKey, knownHostKeys []ssh.PublicKey) error {
+	if key == nil {
 		return fmt.Errorf("got a nil host key")
 	}
 
-	got := hostKey.Marshal()
+	got := key.Marshal()
 
-	for _, known := range d.KnownHostKeys {
+	for _, known := range knownHostKeys {
 		if want := known.Marshal(); bytes.Equal(got, want) {
 			return nil // We've got a matching host key!
 		}
 	}
 
-	return fmt.Errorf("%w: %s", ErrUnknownHostKey, bytes.TrimSpace(ssh.MarshalAuthorizedKey(hostKey)))
+	return fmt.Errorf("%w: %s", ErrUnknownHostKey, bytes.TrimSpace(ssh.MarshalAuthorizedKey(key)))
 }
