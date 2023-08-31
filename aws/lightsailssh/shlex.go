@@ -36,5 +36,5 @@ func commandQuote(s string) string {
 
 	// Use single quotes, and put single quotes into double quotes.
 	// The string $'b is then quoted as '$'"'"'b'.
-	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	return "'" + strings.ReplaceAll(s, `'`, `'"'"'`) + "'"
 }
