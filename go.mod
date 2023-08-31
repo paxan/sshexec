@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.21.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.37
 	github.com/aws/aws-sdk-go-v2/service/lightsail v1.28.5
+	github.com/mitchellh/go-ps v1.0.0
 	golang.org/x/crypto v0.12.0
 	golang.org/x/term v0.11.0
 )

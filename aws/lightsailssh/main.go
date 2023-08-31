@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/mitchellh/go-ps"
 	"github.com/paxan/sshexec"
 	"github.com/paxan/sshexec/aws/lightsail"
 	"golang.org/x/crypto/ssh"
@@ -132,6 +134,13 @@ func runShell(creds *sshexec.Credentials) error {
 func main() {
 	log.SetFlags(0)
 
+	if inRsyncMode() {
+		if err := rsyncMain("rsync("+os.Args[0]+")", os.Args[1:]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	type params struct {
 		instance string
 		commands stringsFlag
@@ -175,4 +184,58 @@ func main() {
 	if err := runShell(creds); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func inRsyncMode() bool {
+	p, err := ps.FindProcess(os.Getppid())
+	if err != nil {
+		log.Print(err)
+		return false
+	}
+	return strings.Contains(p.Executable(), "rsync")
+}
+
+func rsyncMain(prog string, args []string) error {
+	user := ""
+
+	fs := flag.NewFlagSet(prog, flag.ContinueOnError)
+	fs.StringVar(&user, "l", "", "specifies the `user` to log in as on the instance")
+
+	if err := fs.Parse(args); err != nil {
+		return nil
+	}
+
+	args = fs.Args()
+
+	if need, got := 2, len(args); got < need {
+		return fmt.Errorf("got %v arguments, need at least %v", got, need)
+	}
+
+	instance := args[0]
+	cmd := commandJoin(args[1:])
+
+	ctx := context.Background()
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	creds, err := lightsail.NewAuthority(cfg).IssueCredentials(ctx, instance)
+	if err != nil {
+		return err
+	}
+
+	if user != "" && user != creds.User {
+		return fmt.Errorf("login user %q does not match user %q returned by GetInstanceAccessDetails",
+			user, creds.User)
+	}
+
+	client, err := sshexec.NewClient(creds)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	return runCommand(client, cmd)
 }
