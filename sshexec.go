@@ -35,18 +35,23 @@ func NewClientConfig(creds *Credentials, opts ...func(*ssh.ClientConfig)) (*ssh.
 	signer := creds.Signer
 
 	if creds.Cert != nil {
+		if creds.Cert.CertType != ssh.UserCert {
+			return nil, fmt.Errorf("expected an SSH user certificate (type=%v) but got: type=%v",
+				ssh.UserCert, creds.Cert.CertType)
+		}
+
 		certSigner, err := ssh.NewCertSigner(creds.Cert, creds.Signer)
 		if err != nil {
 			return nil, err
 		}
+
 		signer = certSigner
 	}
 
 	config := &ssh.ClientConfig{
-		// Be secure default: we'll check against the specified known host
-		// keys, if any. If none specified, SSH handshake will fail with
-		// ErrUnknownHostKey. If necessary, the caller may specify their own
-		// ssh.HostKeyCallback.
+		// We'll check against the specified known host keys, if any. If none
+		// specified, SSH handshake will fail with ErrUnknownHostKey. If
+		// necessary, the caller may specify their own ssh.HostKeyCallback.
 		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
 			return validateHostKey(key, creds.KnownHostKeys)
 		},
