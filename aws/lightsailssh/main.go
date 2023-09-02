@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/mitchellh/go-ps"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/paxan/sshexec"
 	"github.com/paxan/sshexec/aws/lightsail"
 	"golang.org/x/crypto/ssh"
@@ -131,6 +131,30 @@ func runShell(creds *sshexec.Credentials) error {
 	return nil
 }
 
+func regionFlag(fs *flag.FlagSet, ptr *string) {
+	fs.StringVar(ptr, "region", "", "AWS region to use")
+}
+
+func profileFlag(fs *flag.FlagSet, ptr *string) {
+	fs.StringVar(ptr, "profile", "", "AWS CLI profile")
+}
+
+func mfaCodeFlag(fs *flag.FlagSet, ptr *string) {
+	fs.StringVar(ptr, "mfa", "", "valid MFA `code` to refresh AWS credentials")
+}
+
+func awsConfig(ctx context.Context, profile, region, mfaCode string) (aws.Config, error) {
+	return config.LoadDefaultConfig(ctx,
+		config.WithSharedConfigProfile(profile),
+		config.WithRegion(region),
+		config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
+			if mfaCode != "" {
+				o.TokenProvider = func() (string, error) { return mfaCode, nil }
+			}
+		}),
+	)
+}
+
 func main() {
 	log.SetFlags(0)
 
@@ -141,18 +165,25 @@ func main() {
 		return
 	}
 
-	type params struct {
+	var (
+		profile  string
+		region   string
+		mfaCode  string
 		instance string
 		commands stringsFlag
-	}
+	)
 
-	p := params{}
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	flag.StringVar(&p.instance, "i", "", "the `name` of a Lightsail instance")
-	flag.Var(&p.commands, "c", "`command` to execute, can be specified more than once")
-	flag.Parse()
+	profileFlag(fs, &profile)
+	regionFlag(fs, &region)
+	mfaCodeFlag(fs, &mfaCode)
+	fs.StringVar(&instance, "i", "", "the `name` of a Lightsail instance")
+	fs.Var(&commands, "c", "`command` to execute, can be specified more than once")
 
-	if p.instance == "" {
+	fs.Parse(os.Args[1:])
+
+	if instance == "" {
 		f := flag.Lookup("i")
 		_, usage := flag.UnquoteUsage(f)
 		log.Printf("%q is not valid as %s", f.Value, usage)
@@ -162,20 +193,20 @@ func main() {
 
 	ctx := context.Background()
 
-	cfg, err := config.LoadDefaultConfig(ctx)
+	cfg, err := awsConfig(ctx, profile, region, mfaCode)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	a := lightsail.NewAuthority(cfg)
 
-	creds, err := a.IssueCredentials(ctx, p.instance)
+	creds, err := a.IssueCredentials(ctx, instance)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if len(p.commands) != 0 {
-		if err := runCommands(creds, p.commands); err != nil {
+	if len(commands) != 0 {
+		if err := runCommands(creds, commands); err != nil {
 			log.Fatal(err)
 		}
 		return
@@ -184,58 +215,4 @@ func main() {
 	if err := runShell(creds); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func inRsyncMode() bool {
-	p, err := ps.FindProcess(os.Getppid())
-	if err != nil {
-		log.Print(err)
-		return false
-	}
-	return strings.Contains(p.Executable(), "rsync")
-}
-
-func rsyncMain(prog string, args []string) error {
-	user := ""
-
-	fs := flag.NewFlagSet(prog, flag.ContinueOnError)
-	fs.StringVar(&user, "l", "", "specifies the `user` to log in as on the instance")
-
-	if err := fs.Parse(args); err != nil {
-		return nil
-	}
-
-	args = fs.Args()
-
-	if need, got := 2, len(args); got < need {
-		return fmt.Errorf("got %v arguments, need at least %v", got, need)
-	}
-
-	instance := args[0]
-	cmd := commandJoin(args[1:])
-
-	ctx := context.Background()
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return err
-	}
-
-	creds, err := lightsail.NewAuthority(cfg).IssueCredentials(ctx, instance)
-	if err != nil {
-		return err
-	}
-
-	if user != "" && user != creds.User {
-		return fmt.Errorf("login user %q does not match user %q returned by GetInstanceAccessDetails",
-			user, creds.User)
-	}
-
-	client, err := sshexec.NewClient(creds)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	return runCommand(client, cmd)
 }
