@@ -184,10 +184,10 @@ func main() {
 	fs.Parse(os.Args[1:])
 
 	if instance == "" {
-		f := flag.Lookup("i")
+		f := fs.Lookup("i")
 		_, usage := flag.UnquoteUsage(f)
 		log.Printf("%q is not valid as %s", f.Value, usage)
-		flag.Usage()
+		fs.Usage()
 		os.Exit(1)
 	}
 
