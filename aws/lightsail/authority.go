@@ -23,8 +23,16 @@ type InstanceAccessDetailsGetter interface {
 	) (*lightsail.GetInstanceAccessDetailsOutput, error)
 }
 
-func NewAuthority(cfg aws.Config) *Authority {
-	return &Authority{Client: lightsail.NewFromConfig(cfg)}
+func WithBaseEndpoint(endpoint string) func(*lightsail.Options) {
+	return func(o *lightsail.Options) {
+		if endpoint != "" {
+			o.BaseEndpoint = &endpoint
+		}
+	}
+}
+
+func NewAuthority(cfg aws.Config, opts ...func(*lightsail.Options)) *Authority {
+	return &Authority{Client: lightsail.NewFromConfig(cfg, opts...)}
 }
 
 func (a *Authority) IssueCredentials(

@@ -24,10 +24,11 @@ func inRsyncMode() bool {
 
 func rsyncMain(prog string, args []string) error {
 	var (
-		profile string
-		region  string
-		mfaCode string
-		user    string
+		profile     string
+		region      string
+		mfaCode     string
+		apiEndpoint string
+		user        string
 	)
 
 	fs := flag.NewFlagSet(prog, flag.ContinueOnError)
@@ -35,6 +36,7 @@ func rsyncMain(prog string, args []string) error {
 	profileFlag(fs, &profile)
 	regionFlag(fs, &region)
 	mfaCodeFlag(fs, &mfaCode)
+	apiEndpointFlag(fs, &apiEndpoint)
 	fs.StringVar(&user, "l", "", "the `user` to log in as on the instance")
 
 	if err := fs.Parse(args); err != nil {
@@ -57,7 +59,9 @@ func rsyncMain(prog string, args []string) error {
 		return err
 	}
 
-	creds, err := lightsail.NewAuthority(cfg).IssueCredentials(ctx, instance)
+	creds, err := lightsail.
+		NewAuthority(cfg, lightsail.WithBaseEndpoint(apiEndpoint)).
+		IssueCredentials(ctx, instance)
 	if err != nil {
 		return err
 	}

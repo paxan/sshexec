@@ -143,6 +143,10 @@ func mfaCodeFlag(fs *flag.FlagSet, ptr *string) {
 	fs.StringVar(ptr, "mfa", "", "valid MFA `code` to refresh AWS credentials")
 }
 
+func apiEndpointFlag(fs *flag.FlagSet, ptr *string) {
+	fs.StringVar(ptr, "endpoint-url", "", "override the default API `URL` with the given URL")
+}
+
 func awsConfig(ctx context.Context, profile, region, mfaCode string) (aws.Config, error) {
 	return config.LoadDefaultConfig(ctx,
 		config.WithSharedConfigProfile(profile),
@@ -166,11 +170,12 @@ func main() {
 	}
 
 	var (
-		profile  string
-		region   string
-		mfaCode  string
-		instance string
-		commands stringsFlag
+		profile     string
+		region      string
+		mfaCode     string
+		apiEndpoint string
+		instance    string
+		commands    stringsFlag
 	)
 
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -178,6 +183,7 @@ func main() {
 	profileFlag(fs, &profile)
 	regionFlag(fs, &region)
 	mfaCodeFlag(fs, &mfaCode)
+	apiEndpointFlag(fs, &apiEndpoint)
 	fs.StringVar(&instance, "i", "", "the `name` of a Lightsail instance")
 	fs.Var(&commands, "c", "`command` to execute, can be specified more than once")
 
@@ -198,7 +204,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	a := lightsail.NewAuthority(cfg)
+	a := lightsail.NewAuthority(cfg, lightsail.WithBaseEndpoint(apiEndpoint))
 
 	creds, err := a.IssueCredentials(ctx, instance)
 	if err != nil {
