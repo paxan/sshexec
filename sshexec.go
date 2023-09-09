@@ -13,18 +13,18 @@ var ErrUnknownHostKey = errors.New("unknown host key")
 
 type Credentials struct {
 	User          string
-	Address       string
+	Hostname      string
 	KnownHostKeys []ssh.PublicKey
 	Cert          *ssh.Certificate
 	Signer        ssh.Signer
 }
 
-func NewClient(creds *Credentials, opts ...func(*ssh.ClientConfig)) (*ssh.Client, error) {
+func NewClient(creds *Credentials, port string, opts ...func(*ssh.ClientConfig)) (*ssh.Client, error) {
 	config, err := NewClientConfig(creds, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return ssh.Dial("tcp", creds.Address, config)
+	return ssh.Dial("tcp", net.JoinHostPort(creds.Hostname, port), config)
 }
 
 func NewClientConfig(creds *Credentials, opts ...func(*ssh.ClientConfig)) (*ssh.ClientConfig, error) {

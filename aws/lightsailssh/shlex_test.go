@@ -2,8 +2,8 @@ package main
 
 import "fmt"
 
-func Example_commandJoin() {
-	fmt.Println(commandJoin([]string{
+func Example_shJoin() {
+	fmt.Println(shJoin([]string{
 		``,
 		`such/safe/123`,
 		`$'b`,

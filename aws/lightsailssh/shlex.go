@@ -8,29 +8,29 @@ import (
 // Remixed from https://github.com/python/cpython/blob/HEAD/Lib/shlex.py
 // See: shlex.join & shlex.quote
 
-// commandJoin returns a shell-escaped string from args.
-func commandJoin(args []string) string {
+// shJoin returns a shell-escaped string from args.
+func shJoin(args []string) string {
 	var b strings.Builder
 
 	for i, arg := range args {
 		if i != 0 {
 			b.WriteByte(' ')
 		}
-		b.WriteString(commandQuote(arg))
+		b.WriteString(shQuote(arg))
 	}
 
 	return b.String()
 }
 
-var findUnsafe = regexp.MustCompile(`[^\w@%+=:,./-]`).MatchString
+var unsafePattern = regexp.MustCompile(`[^\w@%+=:,./-]`)
 
-// commandQuote returns a shell-escaped version of s.
-func commandQuote(s string) string {
+// shQuote returns a shell-escaped version of s.
+func shQuote(s string) string {
 	if s == "" {
 		return "''"
 	}
 
-	if !findUnsafe(s) {
+	if !unsafePattern.MatchString(s) {
 		return s
 	}
 

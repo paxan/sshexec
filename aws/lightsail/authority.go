@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"net"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lightsail"
@@ -63,7 +62,7 @@ func (a *Authority) IssueCredentials(
 
 	return &sshexec.Credentials{
 		User:          aws.ToString(iad.AccessDetails.Username),
-		Address:       net.JoinHostPort(aws.ToString(iad.AccessDetails.IpAddress), "22"),
+		Hostname:      aws.ToString(iad.AccessDetails.IpAddress),
 		KnownHostKeys: known,
 		Cert:          cert,
 		Signer:        sk,
