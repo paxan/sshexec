@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"regexp"
@@ -8,15 +8,15 @@ import (
 // Remixed from https://github.com/python/cpython/blob/HEAD/Lib/shlex.py
 // See: shlex.join & shlex.quote
 
-// shJoin returns a shell-escaped string from args.
-func shJoin(args []string) string {
+// SHJoin returns a shell-escaped string from args.
+func SHJoin(args []string) string {
 	var b strings.Builder
 
 	for i, arg := range args {
 		if i != 0 {
 			b.WriteByte(' ')
 		}
-		b.WriteString(shQuote(arg))
+		b.WriteString(SHQuote(arg))
 	}
 
 	return b.String()
@@ -24,8 +24,8 @@ func shJoin(args []string) string {
 
 var unsafePattern = regexp.MustCompile(`[^\w@%+=:,./-]`)
 
-// shQuote returns a shell-escaped version of s.
-func shQuote(s string) string {
+// SHQuote returns a shell-escaped version of s.
+func SHQuote(s string) string {
 	if s == "" {
 		return "''"
 	}

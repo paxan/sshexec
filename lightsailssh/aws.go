@@ -1,4 +1,4 @@
-package lightsail
+package main
 
 import (
 	"context"
@@ -6,23 +6,27 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/lightsail"
 	"github.com/aws/aws-sdk-go-v2/service/lightsail/types"
 	"github.com/paxan/sshexec"
 	"golang.org/x/crypto/ssh"
 )
 
-type Authority struct {
-	Client InstanceAccessDetailsGetter
+func loadAWSConfig(ctx context.Context, profile, region, mfaCode string) (aws.Config, error) {
+	return config.LoadDefaultConfig(ctx,
+		config.WithSharedConfigProfile(profile),
+		config.WithRegion(region),
+		config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
+			if mfaCode != "" {
+				o.TokenProvider = func() (string, error) { return mfaCode, nil }
+			}
+		}),
+	)
 }
 
-type InstanceAccessDetailsGetter interface {
-	GetInstanceAccessDetails(
-		context.Context, *lightsail.GetInstanceAccessDetailsInput, ...func(*lightsail.Options),
-	) (*lightsail.GetInstanceAccessDetailsOutput, error)
-}
-
-func WithBaseEndpoint(endpoint string) func(*lightsail.Options) {
+func withBaseEndpoint(endpoint string) func(*lightsail.Options) {
 	return func(o *lightsail.Options) {
 		if endpoint != "" {
 			o.BaseEndpoint = &endpoint
@@ -30,15 +34,17 @@ func WithBaseEndpoint(endpoint string) func(*lightsail.Options) {
 	}
 }
 
-func NewAuthority(cfg aws.Config, opts ...func(*lightsail.Options)) *Authority {
-	return &Authority{Client: lightsail.NewFromConfig(cfg, opts...)}
+type instanceAccessDetailsGetter interface {
+	GetInstanceAccessDetails(
+		context.Context, *lightsail.GetInstanceAccessDetailsInput, ...func(*lightsail.Options),
+	) (*lightsail.GetInstanceAccessDetailsOutput, error)
 }
 
-func (a *Authority) IssueCredentials(
-	ctx context.Context, target string,
+func getInstanceCredentials(
+	ctx context.Context, client instanceAccessDetailsGetter, instance string,
 ) (*sshexec.Credentials, error) {
-	iad, err := a.Client.GetInstanceAccessDetails(ctx, &lightsail.GetInstanceAccessDetailsInput{
-		InstanceName: aws.String(target),
+	iad, err := client.GetInstanceAccessDetails(ctx, &lightsail.GetInstanceAccessDetailsInput{
+		InstanceName: aws.String(instance),
 		Protocol:     types.InstanceAccessProtocolSsh,
 	})
 	if err != nil {

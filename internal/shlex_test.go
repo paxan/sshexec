@@ -1,9 +1,9 @@
-package main
+package internal
 
 import "fmt"
 
-func Example_shJoin() {
-	fmt.Println(shJoin([]string{
+func ExampleSHJoin() {
+	fmt.Println(SHJoin([]string{
 		``,
 		`such/safe/123`,
 		`$'b`,
