@@ -77,7 +77,7 @@ func parseArgs(osArgs []string, usageWriter io.Writer) (*options, []string, erro
 			"terminating as soon as a command fails")
 
 	// These flags correspond to the flags of OpenSSH client.
-	fs.StringVar(&opts.LoginUser, "l", "", "the `user` to log in as on the instance")
+	fs.StringVar(&opts.User, "l", "", "the `user` to log in as on the instance")
 	fs.StringVar(&opts.Port, "p", "", "`port` to connect to on the instance")
 	fs.BoolVar(&opts.WithSubsystem, "s", false,
 		"request invocation of a subsystem on the remote system;\n"+

@@ -10,7 +10,7 @@ import (
 )
 
 type SessionOptions struct {
-	LoginUser           string
+	User                string
 	Port                string
 	WithSubsystem       bool
 	ArgsCommands        bool
@@ -37,14 +37,12 @@ func NewSessionHandler(opts SessionOptions, args []string) (SessionHandler, *Des
 		return nil, nil, err
 	}
 
-	// If -l user override was given, use it instead of the user parsed from
-	// destination arg.
-	if opts.LoginUser != "" {
-		dst.User = opts.LoginUser
+	// Favor User specified in opts over User specified by args[0].
+	if opts.User != "" {
+		dst.User = opts.User
 	}
 
-	// If -p port override was given, use it instead of the port parsed from
-	// destination arg.
+	// Favor Port specified in opts over Port parsed from args[0].
 	if opts.Port != "" {
 		dst.Port = opts.Port
 	}
