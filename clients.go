@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -75,11 +76,22 @@ func validateHostKey(key ssh.PublicKey, knownHostKeys []ssh.PublicKey) error {
 
 	got := key.Marshal()
 
-	for _, known := range knownHostKeys {
+	var expected strings.Builder
+	for i, known := range knownHostKeys {
 		if want := known.Marshal(); bytes.Equal(got, want) {
 			return nil // We've got a matching host key!
 		}
+		if i != 0 {
+			expected.WriteString(", ")
+		}
+		expected.WriteString(known.Type())
+		expected.WriteRune(' ')
+		expected.WriteString(ssh.FingerprintSHA256(known))
 	}
 
-	return fmt.Errorf("%w: %s", ErrUnknownHostKey, bytes.TrimSpace(ssh.MarshalAuthorizedKey(key)))
+	return fmt.Errorf("%w: %s fingerprint: %s (expected fingerprints: %s)", ErrUnknownHostKey,
+		bytes.TrimSpace(ssh.MarshalAuthorizedKey(key)),
+		ssh.FingerprintSHA256(key),
+		&expected,
+	)
 }
