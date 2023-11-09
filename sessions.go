@@ -10,10 +10,11 @@ import (
 )
 
 type SessionOptions struct {
-	LoginUser     string
-	Port          string
-	WithSubsystem bool
-	ArgsCommands  bool
+	LoginUser           string
+	Port                string
+	WithSubsystem       bool
+	ArgsCommands        bool
+	ForcePseudoTerminal bool
 }
 
 type SessionHandler interface {
@@ -62,10 +63,10 @@ func NewSessionHandler(opts SessionOptions, args []string) (SessionHandler, *Des
 		return &internal.Subsystem{Command: cmdArgs[0]}, dst, nil
 	case opts.ArgsCommands:
 		return internal.Commands(cmdArgs), dst, nil
-	case len(cmdArgs) != 0:
-		return internal.Commands{internal.SHJoin(cmdArgs)}, dst, nil
+	case len(cmdArgs) == 0 || opts.ForcePseudoTerminal:
+		return &internal.Shell{Command: internal.SHJoin(cmdArgs)}, dst, nil
 	default:
-		return &internal.Shell{}, dst, nil
+		return internal.Commands{internal.SHJoin(cmdArgs)}, dst, nil
 	}
 }
 

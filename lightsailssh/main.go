@@ -85,6 +85,10 @@ func parseArgs(osArgs []string, usageWriter io.Writer) (*options, []string, erro
 			"for other applications (e.g. sftp(1)); the subsystem is\n"+
 			"specified as the remote command; refer to the description\n"+
 			"of SessionType in ssh_config(5) for details")
+	fs.BoolVar(&opts.ForcePseudoTerminal, "t", false,
+		"force pseudo-terminal allocation; this can be used to\n"+
+			"execute arbitrary screen-based programs on a remote machine,\n"+
+			"which can be very useful, e.g. when implementing menu services.")
 
 	// Flags that configure AWS-related options. They are named so that they not
 	// clash with the standard OpenSSH client flags.

@@ -7,7 +7,9 @@ import (
 	"golang.org/x/term"
 )
 
-type Shell struct{}
+type Shell struct {
+	Command string
+}
 
 func (s *Shell) HandleSession(client *ssh.Client) error {
 	session, err := client.NewSession()
@@ -49,6 +51,10 @@ func (s *Shell) HandleSession(client *ssh.Client) error {
 		if err := session.RequestPty("xterm-256color", height, width, modes); err != nil {
 			return err
 		}
+	}
+
+	if s.Command != "" {
+		return session.Run(s.Command)
 	}
 
 	if err := session.Shell(); err != nil {
